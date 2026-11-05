@@ -1,0 +1,6 @@
+{
+  "name": "PP PASSION - Business Talk 2026 銀保渠道事業發展分享會",
+  "description": "2026 銀保渠道事業發展分享會線上報名網站，包含嘉賓介紹、倒計時器、即時席位追蹤、在線申請表及電子入場券領取。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
