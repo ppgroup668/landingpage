@@ -87,9 +87,9 @@ export const Footer: React.FC<{
 
               <button
                 onClick={onAdminClick}
-                className="w-full py-1.5 px-4 rounded-xl text-slate-400 hover:text-slate-300 text-[11px] text-center"
+                className="w-full py-1.5 px-4 rounded-xl text-slate-400 hover:text-slate-300 text-[11px] text-center cursor-pointer"
               >
-                工作人員 · 登記名錄查詢
+                工作人員 · 查看名單 (需密碼)
               </button>
             </div>
           </div>

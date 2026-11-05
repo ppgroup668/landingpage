@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, Search, Users, Gift, Ticket, Eye, Trash2 } from 'lucide-react';
+import { X, Download, Search, Users, Eye, Lock, KeyRound, AlertCircle, LogOut } from 'lucide-react';
 import { RegistrationTicket } from '../types';
 
 interface AdminModalProps {
@@ -17,11 +17,121 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   onSelectTicket,
   totalSeats
 }) => {
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCareer, setFilterCareer] = useState('all');
 
   if (!isOpen) return null;
 
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === '668668') {
+      setIsAuthenticated(true);
+      setErrorMsg('');
+      setPassword('');
+    } else {
+      setErrorMsg('密碼不正確，請重新輸入');
+      setPassword('');
+    }
+  };
+
+  const handleClose = () => {
+    setIsAuthenticated(false);
+    setPassword('');
+    setErrorMsg('');
+    onClose();
+  };
+
+  const handleLock = () => {
+    setIsAuthenticated(false);
+    setPassword('');
+    setErrorMsg('');
+  };
+
+  // 1. Password Verification Screen (Hidden Password Input)
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+        <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl p-6 sm:p-8 text-center">
+          
+          {/* Close button */}
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+            aria-label="關閉"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          {/* Lock Icon */}
+          <div className="w-16 h-16 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center mx-auto mb-4 text-orange-400 shadow-lg shadow-orange-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <h3 className="text-xl font-bold text-white font-display">
+            主辦方管理驗證
+          </h3>
+          <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            此名冊包含出席嘉賓聯絡電話及個人資料，請輸入管理密碼以解鎖查看名單。
+          </p>
+
+          {/* Password Form */}
+          <form onSubmit={handlePasswordSubmit} className="mt-6 space-y-4">
+            <div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                {/* Password input with type="password" to keep password hidden */}
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMsg) setErrorMsg('');
+                  }}
+                  autoFocus
+                  placeholder="請輸入查看密碼"
+                  autoComplete="current-password"
+                  className={`w-full pl-10 pr-4 py-3 bg-slate-950 border ${
+                    errorMsg ? 'border-red-500 focus:border-red-500' : 'border-slate-800 focus:border-orange-500'
+                  } rounded-xl text-white text-center text-sm font-mono tracking-widest focus:outline-none transition-colors placeholder:font-sans placeholder:tracking-normal placeholder:text-slate-500`}
+                />
+              </div>
+
+              {errorMsg && (
+                <div className="mt-2 text-xs text-red-400 flex items-center justify-center gap-1.5 animate-fadeIn">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white text-xs font-bold shadow-md shadow-orange-500/20 transition-all cursor-pointer"
+              >
+                確認解鎖
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Authenticated Roster Screen
   const filtered = registrations.filter((reg) => {
     const matchesSearch =
       reg.formData.chineseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -94,9 +204,14 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white font-display">
-                主辦方名冊管理 · BUSINESS TALK 2026
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white font-display">
+                  主辦方名冊管理 · BUSINESS TALK 2026
+                </h3>
+                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                  已解鎖
+                </span>
+              </div>
               <p className="text-xs text-slate-400">
                 已登記嘉賓：{registrations.length} / {totalSeats} 人 · 剩餘席位：{Math.max(0, totalSeats - registrations.length)} 席
               </p>
@@ -106,15 +221,25 @@ export const AdminModal: React.FC<AdminModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={exportToCsv}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>匯出 CSV / Excel</span>
             </button>
 
             <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+              onClick={handleLock}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors cursor-pointer"
+              title="重新鎖定名單"
+            >
+              <LogOut className="w-3.5 h-3.5 text-orange-400" />
+              <span className="hidden sm:inline">鎖定</span>
+            </button>
+
+            <button
+              onClick={handleClose}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              aria-label="關閉視窗"
             >
               <X className="w-5 h-5" />
             </button>
@@ -141,7 +266,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
           >
             <option value="all">全部背景類別</option>
             <option value="NGO">NGO 文職</option>
-            <option value="助理">行政秘書 / PA</option>
+            <option value="助理">行政秘助 / PA</option>
             <option value="銀行">銀行 / 零售服務</option>
             <option value="畢業">應屆畢業生</option>
           </select>
@@ -201,7 +326,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   <td className="py-3 px-3 text-right whitespace-nowrap">
                     <button
                       onClick={() => onSelectTicket(item)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-orange-400 hover:text-orange-300 text-[11px] font-medium inline-flex items-center gap-1 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-orange-400 hover:text-orange-300 text-[11px] font-medium inline-flex items-center gap-1 transition-colors cursor-pointer"
                       title="檢視電子門票"
                     >
                       <Eye className="w-3 h-3" />
@@ -224,8 +349,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         <div className="px-6 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
           <span>共顯示 {filtered.length} 筆登記資料</span>
           <button
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+            onClick={handleClose}
+            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
           >
             關閉視窗
           </button>

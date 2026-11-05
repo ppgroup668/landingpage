@@ -54,11 +54,11 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={onAdminClick}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg transition-colors whitespace-nowrap shrink-0"
-            title="查看已登記名單"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            title="查看已登記名單 (需輸入管理密碼)"
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>報名名單</span>
+            <Users className="w-3.5 h-3.5 text-orange-400" />
+            <span>查看名單</span>
           </button>
 
           <button
@@ -136,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
               }}
               className="flex-1 py-2 text-xs font-medium text-slate-300 bg-slate-800 rounded-lg text-center"
             >
-              已登記名單管理
+              查看名單 (需密碼)
             </button>
             <button
               onClick={() => {
