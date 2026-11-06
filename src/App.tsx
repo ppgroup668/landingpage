@@ -4,206 +4,222 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Header } from './components/Header';
-import { Hero } from './components/Hero';
-import { Speakers } from './components/Speakers';
-import { WhyBancassurance } from './components/WhyBancassurance';
-import { Agenda } from './components/Agenda';
-import { LuckyDrawSection } from './components/LuckyDrawSection';
-import { RegistrationForm } from './components/RegistrationForm';
-import { VenueSection } from './components/VenueSection';
-import { FAQSection } from './components/FAQSection';
-import { Footer } from './components/Footer';
-import { TicketModal } from './components/TicketModal';
-import { PosterModal } from './components/PosterModal';
-import { AdminModal } from './components/AdminModal';
-import { CountdownTimer } from './components/CountdownTimer';
-import { EVENT_DETAILS, INITIAL_REGISTRATIONS } from './data/initialData';
-import { RegistrationTicket } from './types';
-import { Ticket, ArrowUp } from 'lucide-react';
+import { DinnerHeader } from './components/DinnerHeader';
+import { DinnerHero } from './components/DinnerHero';
+import { DinnerVotingForm } from './components/DinnerVotingForm';
+import { AttendeeListPreview } from './components/AttendeeListPreview';
+import { AdminBackendModal } from './components/AdminBackendModal';
+import { DinnerFooter } from './components/DinnerFooter';
+import { INITIAL_DINNER_EVENTS, INITIAL_VOTES } from './data/initialData';
+import { DinnerEvent, DinnerVote, AttendanceStatus } from './types';
 
-const STORAGE_KEY = 'pp_passion_registrations_2026';
-const USER_TICKET_KEY = 'pp_passion_my_ticket_2026';
+const EVENTS_STORAGE_KEY = 'dinner_app_events_v1';
+const VOTES_STORAGE_KEY = 'dinner_app_votes_v1';
+const MY_VOTE_KEY = 'dinner_app_my_vote_v1';
 
 export default function App() {
-  const [registrations, setRegistrations] = useState<RegistrationTicket[]>(() => {
+  // All Dinner Events (Active & Archived)
+  const [events, setEvents] = useState<DinnerEvent[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      const saved = localStorage.getItem(EVENTS_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
     } catch {
-      // fallback to initial
+      // fallback
     }
-    return INITIAL_REGISTRATIONS;
+    return INITIAL_DINNER_EVENTS;
   });
 
-  const [activeTicket, setActiveTicket] = useState<RegistrationTicket | null>(null);
-  const [isPosterOpen, setIsPosterOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [myTicket, setMyTicket] = useState<RegistrationTicket | null>(() => {
+  // Current Active Event ID
+  const [activeEventId, setActiveEventId] = useState<string>(() => {
+    return events.find((e) => e.status === 'active')?.id || events[0]?.id || 'dinner-current';
+  });
+
+  // All Votes across events
+  const [votes, setVotes] = useState<DinnerVote[]>(() => {
     try {
-      const saved = localStorage.getItem(USER_TICKET_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      const saved = localStorage.getItem(VOTES_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
     } catch {
-      // ignore
+      // fallback
+    }
+    return INITIAL_VOTES;
+  });
+
+  // User's own previous vote
+  const [myVote, setMyVote] = useState<DinnerVote | null>(() => {
+    try {
+      const saved = localStorage.getItem(MY_VOTE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
     }
     return null;
   });
 
-  // Calculate remaining seats
-  // Start from totalSeats (50) minus taken
-  // e.g. initial 43 taken + any additional user registrations beyond INITIAL_REGISTRATIONS
-  const totalSeats = EVENT_DETAILS.totalSeats;
-  const initialCount = INITIAL_REGISTRATIONS.length;
-  const userAddedCount = Math.max(0, registrations.length - initialCount);
-  const totalBooked = Math.min(totalSeats, EVENT_DETAILS.initialTakenSeats + userAddedCount);
-  const remainingSeats = Math.max(0, totalSeats - totalBooked);
+  // Admin Modal Open State
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // Sync to local storage
+  // Sync to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(registrations));
-    } catch {
-      // ignore
-    }
-  }, [registrations]);
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
+    } catch {}
+  }, [events]);
 
-  // Scroll listener for top button
   useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 400);
+    try {
+      localStorage.setItem(VOTES_STORAGE_KEY, JSON.stringify(votes));
+    } catch {}
+  }, [votes]);
+
+  // Current Event Object
+  const currentEvent = events.find((e) => e.id === activeEventId) || events[0];
+
+  // Current Event Votes
+  const currentEventVotes = votes.filter((v) => v.eventId === currentEvent.id);
+  const attendingVotes = currentEventVotes.filter((v) => v.status === 'attending');
+  const notAttendingVotes = currentEventVotes.filter((v) => v.status === 'not_attending');
+  const totalHeadcount = attendingVotes.reduce((sum, v) => sum + (v.headcount || 1), 0);
+
+  // Handle User Vote Submission
+  const handleVoteSubmit = (voteData: Omit<DinnerVote, 'id' | 'votedAt'>) => {
+    const existingIndex = votes.findIndex(
+      (v) => v.eventId === voteData.eventId && v.phone === voteData.phone
+    );
+
+    let updatedVotes: DinnerVote[];
+    let newOrUpdatedVote: DinnerVote;
+
+    if (existingIndex >= 0) {
+      newOrUpdatedVote = {
+        ...votes[existingIndex],
+        ...voteData,
+        updatedAt: new Date().toISOString()
+      };
+      updatedVotes = [...votes];
+      updatedVotes[existingIndex] = newOrUpdatedVote;
+    } else {
+      newOrUpdatedVote = {
+        id: `vote-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        votedAt: new Date().toISOString(),
+        ...voteData
+      };
+      updatedVotes = [newOrUpdatedVote, ...votes];
+    }
+
+    setVotes(updatedVotes);
+    setMyVote(newOrUpdatedVote);
+    try {
+      localStorage.setItem(MY_VOTE_KEY, JSON.stringify(newOrUpdatedVote));
+    } catch {}
+  };
+
+  // Handle Event Update (Admin edits dinner date/time/venue)
+  const handleUpdateEvent = (updated: DinnerEvent) => {
+    const updatedEvents = events.map((e) => (e.id === updated.id ? updated : e));
+    setEvents(updatedEvents);
+  };
+
+  // Handle Archive & Create New Event
+  const handleArchiveAndCreateNew = (newEventData: Omit<DinnerEvent, 'id' | 'createdAt' | 'status'>) => {
+    const archivedEvents = events.map((e) =>
+      e.id === currentEvent.id ? { ...e, status: 'archived' as const } : e
+    );
+
+    const newId = `dinner-${Date.now()}`;
+    const newEvent: DinnerEvent = {
+      id: newId,
+      createdAt: new Date().toISOString(),
+      status: 'active',
+      ...newEventData
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
-  const scrollToRegister = () => {
-    const element = document.getElementById('register');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+    setEvents([newEvent, ...archivedEvents]);
+    setActiveEventId(newId);
+  };
+
+  // Admin delete vote
+  const handleDeleteVote = (voteId: string) => {
+    setVotes((prev) => prev.filter((v) => v.id !== voteId));
+    if (myVote && myVote.id === voteId) {
+      setMyVote(null);
+      localStorage.removeItem(MY_VOTE_KEY);
     }
   };
 
-  const handleRegistrationSuccess = (newTicket: RegistrationTicket) => {
-    const updated = [newTicket, ...registrations];
-    setRegistrations(updated);
-    setMyTicket(newTicket);
-    setActiveTicket(newTicket);
-    try {
-      localStorage.setItem(USER_TICKET_KEY, JSON.stringify(newTicket));
-    } catch {
-      // ignore
-    }
+  // Admin manually add vote
+  const handleManualAddVote = (voteData: Omit<DinnerVote, 'id' | 'votedAt'>) => {
+    const newVote: DinnerVote = {
+      id: `vote-${Date.now()}`,
+      votedAt: new Date().toISOString(),
+      ...voteData
+    };
+    setVotes((prev) => [newVote, ...prev]);
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Admin update vote status
+  const handleUpdateVoteStatus = (voteId: string, newStatus: AttendanceStatus) => {
+    setVotes((prev) =>
+      prev.map((v) => (v.id === voteId ? { ...v, status: newStatus } : v))
+    );
+  };
+
+  const scrollToVote = () => {
+    const el = document.getElementById('voting-form');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
+    <div className="min-h-screen bg-amber-50/30 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
       
-      {/* Top Bar Navigation */}
-      <Header
-        onRegisterClick={scrollToRegister}
-        onAdminClick={() => setIsAdminOpen(true)}
-        remainingSeats={remainingSeats}
+      {/* Top Header */}
+      <DinnerHeader
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        attendingCount={totalHeadcount}
       />
 
-      {/* Main Content Sections */}
       <main className="flex-1">
-        
-        {/* Hero with live countdown, poster showcase & quota progress */}
-        <Hero
-          onRegisterClick={scrollToRegister}
-          onOpenPoster={() => setIsPosterOpen(true)}
-          remainingSeats={remainingSeats}
-          totalSeats={totalSeats}
+        {/* Dinner Event Details & Countdown Hero */}
+        <DinnerHero
+          event={currentEvent}
+          attendingHeadcount={totalHeadcount}
+          attendingVotesCount={attendingVotes.length}
+          notAttendingCount={notAttendingVotes.length}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+          onScrollToVote={scrollToVote}
         />
 
-        {/* Keynote Speakers Detail */}
-        <Speakers onRegisterClick={scrollToRegister} />
-
-        {/* Why Bancassurance Channel Advantages */}
-        <WhyBancassurance onRegisterClick={scrollToRegister} />
-
-        {/* Seminar Timeline & Agenda */}
-        <Agenda onRegisterClick={scrollToRegister} />
-
-        {/* Lucky Draw Feature & Simulator */}
-        <LuckyDrawSection onRegisterClick={scrollToRegister} />
-
-        {/* Online Registration Form */}
-        <RegistrationForm
-          onSuccess={handleRegistrationSuccess}
-          remainingSeats={remainingSeats}
-          totalSeats={totalSeats}
+        {/* Voting Form (Name, Phone, Attending/Not Attending) */}
+        <DinnerVotingForm
+          eventId={currentEvent.id}
+          onVoteSubmit={handleVoteSubmit}
+          myPreviousVote={myVote?.eventId === currentEvent.id ? myVote : null}
         />
 
-        {/* Venue, Transportation & Map */}
-        <VenueSection />
-
-        {/* FAQ Accordion */}
-        <FAQSection onRegisterClick={scrollToRegister} />
-
+        {/* Real-time Attendee List Preview */}
+        <AttendeeListPreview votes={currentEventVotes} />
       </main>
 
-      {/* Quiet Footer */}
-      <Footer
-        onRegisterClick={scrollToRegister}
-        onOpenPoster={() => setIsPosterOpen(true)}
-        onAdminClick={() => setIsAdminOpen(true)}
+      {/* Footer */}
+      <DinnerFooter
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        event={currentEvent}
       />
 
-      {/* Floating Bottom Bar for Existing Registered Attendees */}
-      {myTicket && !activeTicket && (
-        <div className="fixed bottom-4 left-4 z-40 animate-bounce">
-          <button
-            onClick={() => setActiveTicket(myTicket)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-2xl shadow-orange-500/50 border border-orange-400 transition-all cursor-pointer"
-          >
-            <Ticket className="w-4 h-4" />
-            <span>我的電子入場門票 ({myTicket.registrationNo})</span>
-          </button>
-        </div>
-      )}
-
-      {/* Scroll to Top Button */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-4 right-4 z-40 p-3 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 shadow-xl transition-all cursor-pointer"
-          aria-label="回到頁首"
-        >
-          <ArrowUp className="w-4 h-4" />
-        </button>
-      )}
-
-      {/* Modals */}
-      <TicketModal
-        ticket={activeTicket}
-        onClose={() => setActiveTicket(null)}
-      />
-
-      <PosterModal
-        isOpen={isPosterOpen}
-        onClose={() => setIsPosterOpen(false)}
-        onRegisterClick={scrollToRegister}
-      />
-
-      <AdminModal
+      {/* Admin Backend Modal (Edit Date / View Records - Password protected 668668) */}
+      <AdminBackendModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
-        registrations={registrations}
-        onSelectTicket={(ticket) => {
-          setIsAdminOpen(false);
-          setActiveTicket(ticket);
-        }}
-        totalSeats={totalSeats}
+        currentEvent={currentEvent}
+        allEvents={events}
+        votes={votes}
+        onUpdateEvent={handleUpdateEvent}
+        onArchiveAndCreateNew={handleArchiveAndCreateNew}
+        onDeleteVote={handleDeleteVote}
+        onManualAddVote={handleManualAddVote}
+        onUpdateVoteStatus={handleUpdateVoteStatus}
       />
 
     </div>

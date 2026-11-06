@@ -17,12 +17,12 @@
   }
 }
 
-/* Custom subtle noise or glowing pulse */
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 0.85; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.02); }
+/* Warm, inviting pulse and transitions */
+@keyframes warm-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
 }
 
-.animate-glow {
-  animation: pulse-subtle 4s ease-in-out infinite;
+.animate-float {
+  animation: warm-float 3s ease-in-out infinite;
 }

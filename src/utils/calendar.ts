@@ -1,34 +1,44 @@
-export function generateGoogleCalendarUrl(): string {
-  const title = encodeURIComponent("PP PASSION · Business Talk 2026 銀保渠道事業發展分享會");
-  // 2026-11-20 20:00 - 22:00 HKT (UTC+8 is 12:00 - 14:00 UTC)
-  const dates = "20261120T120000Z/20261120T140000Z";
-  const location = encodeURIComponent("香港九龍尖沙咀廣東道15號港威大廈5座11樓 BOC Life");
+import { DinnerEvent } from '../types';
+
+export function generateDinnerGoogleCalendarUrl(event: DinnerEvent): string {
+  const title = encodeURIComponent(event.title);
+  // e.g. "2026-11-20" and "19:30"
+  const dateFormatted = event.date.replace(/-/g, '');
+  const timeFormatted = event.time.replace(/:/g, '') + '00';
+  const startIso = `${dateFormatted}T${timeFormatted}Z`;
+  
+  // 2 hours duration
+  const endHours = String((parseInt(event.time.split(':')[0], 10) + 2) % 24).padStart(2, '0');
+  const endIso = `${dateFormatted}T${endHours}${event.time.split(':')[1]}00Z`;
+
+  const location = encodeURIComponent(`${event.venue} ${event.address || ''}`);
   const details = encodeURIComponent(
-    "【PP PASSION 2026 銀保渠道事業發展分享會】\n" +
-    "時間：2026年11月20日 (星期五) 20:00 - 22:00\n" +
-    "地點：香港九龍尖沙咀廣東道15號港威大廈5座11樓 BOC Life\n" +
-    "分享嘉賓：Yue Wong（分行經理 | 8年6年COT）& Cecilia Yik（高級分部經理 | 6年1年TOT/COT/3年MDRT）\n" +
-    "備註：請攜帶電子入場券準時出席，現場備有 iPad WiFi 128GB 幸運大抽獎！"
+    `【${event.title}】\n` +
+    `時間：${event.date} ${event.time}\n` +
+    `地點：${event.venue}\n` +
+    (event.notes ? `備註：${event.notes}\n` : '')
   );
 
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&location=${location}&details=${details}`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startIso}/${endIso}&location=${location}&details=${details}`;
 }
 
-export function downloadIcsFile(ticketNo?: string): void {
+export function downloadDinnerIcsFile(event: DinnerEvent): void {
+  const dateFormatted = event.date.replace(/-/g, '');
+  const timeFormatted = event.time.replace(/:/g, '') + '00';
+
   const icsContent = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//PP PASSION//Business Talk 2026//ZH",
+    "PRODID:-//Dinner Gathering//RSVP App//ZH",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    "UID:pp-passion-businesstalk-20261120@" + window.location.hostname,
+    "UID:dinner-gathering-" + event.id + "@" + window.location.hostname,
     "DTSTAMP:20261105T000000Z",
-    "DTSTART:20261120T120000Z",
-    "DTEND:20261120T140000Z",
-    "SUMMARY:PP PASSION · Business Talk 2026 銀保渠道事業發展分享會",
-    "LOCATION:香港九龍尖沙咀廣東道15號港威大廈5座11樓 BOC Life",
-    `DESCRIPTION:PP PASSION 2026 銀保渠道事業發展分享會\\n入場編號：${ticketNo || "已確認"}\\n時間：2026年11月20日 20:00\\n特邀嘉賓：Yue Wong & Cecilia Yik\\n現場備有 iPad 128GB 抽獎`,
+    `DTSTART:${dateFormatted}T${timeFormatted}`,
+    `SUMMARY:${event.title}`,
+    `LOCATION:${event.venue} ${event.address || ''}`,
+    `DESCRIPTION:${event.title}\\n地點：${event.venue}\\n備註：${event.notes || '歡聚食飯'}`,
     "STATUS:CONFIRMED",
     "END:VEVENT",
     "END:VCALENDAR"
@@ -38,7 +48,7 @@ export function downloadIcsFile(ticketNo?: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.setAttribute("download", "PP_PASSION_Business_Talk_2026.ics");
+  link.setAttribute("download", `${event.title.replace(/[\s\/:*?"<>|]/g, '_')}.ics`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
